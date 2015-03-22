@@ -4,31 +4,17 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#define THRES 570
+#define THRES 550
 #define KEY_DATA 1
   
 static Window *s_main_window;
+static Window *alert_window;
+static Window *select_window;
 static TextLayer *s_output_layer;
+static TextLayer *alert_layer;
+static TextLayer *select_layer;
+static bool has_select_window;
 
-
-void send_alert_to_phone(){
-  DictionaryIterator *iter;
-  
-  app_message_outbox_begin(&iter);
-  dict_write_uint8(iter, KEY_DATA, 1);
-  app_message_outbox_send();
-  APP_LOG(APP_LOG_LEVEL_DEBUG,"Msg Sent!");
-}
-void select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
-  //send alert to phone via bluetooth
-  //Window *window = (Window *)context;
-  send_alert_to_phone();
-}
-
-void select_long_click_release_handler(ClickRecognizerRef recognizer, void *context) {
-  //recv ACK from phone and print 
-  
-}
 
 int16_t max(int16_t a_in, int16_t b_in, int16_t c_in ){
   int16_t a = abs(a_in);
@@ -43,33 +29,142 @@ int16_t max(int16_t a_in, int16_t b_in, int16_t c_in ){
     else return c;
   }
 } 
+//Main window loading
+static void main_window_load(Window *window) {
+  Layer *window_layer = window_get_root_layer(window);
+  GRect window_bounds = layer_get_bounds(window_layer);
+
+  // Create output TextLayer
+  s_output_layer = text_layer_create(GRect(5, 0, window_bounds.size.w - 10, window_bounds.size.h));
+  text_layer_set_font(s_output_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
+  text_layer_set_text(s_output_layer, "No data yet.");
+  text_layer_set_overflow_mode(s_output_layer, GTextOverflowModeWordWrap);
+  layer_add_child(window_layer, text_layer_get_layer(s_output_layer));
+
+}
+static void main_window_unload(Window *window) {
+  // Destroy output TextLayer
+  text_layer_destroy(s_output_layer);
+}
+
+//Alert Window loading
+static void alert_window_load(Window *window) {
+  Layer *window_layer = window_get_root_layer(window);
+  GRect window_bounds = layer_get_bounds(window_layer);
+
+  // Create output TextLayer
+  alert_layer = text_layer_create(GRect(5, 0, window_bounds.size.w - 10, window_bounds.size.h));
+  text_layer_set_font(alert_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
+  text_layer_set_text(alert_layer, "Hold on, Sending Alert!!!");
+  text_layer_set_overflow_mode(alert_layer, GTextOverflowModeWordWrap);
+  layer_add_child(window_layer, text_layer_get_layer(alert_layer));
+
+}
+
+static void alert_window_unload(Window *window) {
+  // Destroy output TextLayer
+  text_layer_destroy(alert_layer);
+}
+
+//Select window loading
+static void select_window_load(Window *window) {
+  Layer *window_layer = window_get_root_layer(window);
+  GRect window_bounds = layer_get_bounds(window_layer);
+
+  // Create output TextLayer
+  select_layer = text_layer_create(GRect(5, 0, window_bounds.size.w - 10, window_bounds.size.h));
+  text_layer_set_font(select_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
+  text_layer_set_text(select_layer, "Do you want to send the alert? UP:YES | DOWN:NO");
+  text_layer_set_overflow_mode(select_layer, GTextOverflowModeWordWrap);
+  layer_add_child(window_layer, text_layer_get_layer(select_layer));
+
+}
+
+static void select_window_unload(Window *window) {
+  // Destroy output TextLayer
+  text_layer_destroy(select_layer);
+}
+
+
+void send_alert_to_phone(){
+  DictionaryIterator *iter;
+  app_message_outbox_begin(&iter);
+  dict_write_uint8(iter, KEY_DATA, 1);
+  app_message_outbox_send();
+  APP_LOG(APP_LOG_LEVEL_DEBUG,"Msg Sent!");
+  
+  alert_window = window_create();
+  APP_LOG(APP_LOG_LEVEL_DEBUG , "Alert window create step1");
+  window_set_window_handlers(alert_window, (WindowHandlers) {
+      .load = alert_window_load,
+    .unload = alert_window_unload
+	});
+  
+  window_stack_push(alert_window, true);
+  APP_LOG(APP_LOG_LEVEL_DEBUG,"alert window created");
+ 
+}
+
+void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+  //send alert to phone via bluetooth
+  // accel_data_service_unsubscribe();
+  if(click_recognizer_get_button_id(recognizer)==BUTTON_ID_UP){
+    send_alert_to_phone();
+  }
+  /*
+  else{
+    window_destroy(select_window);
+  }
+  */
+  
+}
+void select_long_click_handler(ClickRecognizerRef recognizer, void *context){
+  send_alert_to_phone();
+}
+
+void select_long_click_release_handler(ClickRecognizerRef recognizer, void *context) {
+  //recv ACK from phone and print 
+  
+}
+
+
 
 bool isFalling(AccelData *data) {
-  if (max(data[0].x, data[0].y, data[0].z)<THRES){
+  int16_t max0=max(data[0].x, data[0].y, data[0].z);
+  int16_t max1=max(data[1].x, data[1].y, data[1].z);
+  int16_t max2=max(data[2].x, data[2].y, data[2].z);
+  if ( max(max0,max1,max2)<THRES){
     return true;
   }
-  
   return false;
 }
-/*
-static void data_handler(AccelData *data, uint32_t num_samples) {
-  // Long lived buffer
-  static char s_buffer[128];
-  if (isFalling(data)) {
-    // Compose string of all data
-    snprintf(s_buffer, sizeof(s_buffer), 
-         "X,Y,Z\n %d,%d,%d", 
-	      data[0].x, data[0].y, data[0].z
-	           );
-  
-    //Show the data
-    text_layer_set_text(s_output_layer, s_buffer);
-  } else {
-    text_layer_set_text(s_output_layer, "Not falling\n");
-  }
-  //memset(s_buffer, 0, sizeof(s_buffer));
+
+
+
+
+void config_provider(Window * window){
+  window_single_click_subscribe(BUTTON_ID_UP,select_single_click_handler);
+  window_single_click_subscribe(BUTTON_ID_DOWN,select_single_click_handler);
+  window_long_click_subscribe(BUTTON_ID_SELECT, 700, select_long_click_handler, select_long_click_release_handler);
 }
-*/
+
+void create_select_dialogue(){
+  if (!has_select_window) {
+    select_window = window_create();
+    has_select_window=true;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Creating new window ");
+    window_set_window_handlers(select_window, (WindowHandlers) {
+        .load = select_window_load,
+      .unload = select_window_unload
+	  });
+      
+    window_stack_push(select_window, true);
+    window_set_click_config_provider(select_window, (ClickConfigProvider) config_provider);
+  } else {
+    // set select_window as the active window
+      
+  }
+}
 
 static void data_handler(AccelData *data, uint32_t num_samples) {
   // Long lived buffer
@@ -92,33 +187,13 @@ static void data_handler(AccelData *data, uint32_t num_samples) {
   text_layer_set_text(s_output_layer, s_buffer);
   
   if(isFalling(data)){
-    
-    send_alert_to_phone();
+    //Create a dialogue
+    create_select_dialogue();
   }
   
 }
 
-static void main_window_load(Window *window) {
-  Layer *window_layer = window_get_root_layer(window);
-  GRect window_bounds = layer_get_bounds(window_layer);
 
-  // Create output TextLayer
-  s_output_layer = text_layer_create(GRect(5, 0, window_bounds.size.w - 10, window_bounds.size.h));
-  text_layer_set_font(s_output_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24));
-  text_layer_set_text(s_output_layer, "No data yet.");
-  text_layer_set_overflow_mode(s_output_layer, GTextOverflowModeWordWrap);
-  layer_add_child(window_layer, text_layer_get_layer(s_output_layer));
-}
-
-static void main_window_unload(Window *window) {
-  // Destroy output TextLayer
-  text_layer_destroy(s_output_layer);
-}
-
-void config_provider(Window * window){
-  
-  window_long_click_subscribe(BUTTON_ID_SELECT, 700, select_long_click_handler, select_long_click_release_handler);
-}
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   // Get the first pair
@@ -142,6 +217,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     // Get next pair, if any
     t = dict_read_next(iterator);
   }
+  
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
@@ -189,12 +265,15 @@ static void init() {
 
 static void deinit() {
   // Destroy main Window
-  window_destroy(s_main_window);
   accel_data_service_unsubscribe();
-
+  window_destroy(alert_window);
+  window_destroy(select_window);
+  window_destroy(s_main_window);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "destroy window");
 }
 
 int main(void) {
+  has_select_window = false;
   init();
   app_event_loop();
   deinit();
