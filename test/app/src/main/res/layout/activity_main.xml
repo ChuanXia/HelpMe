@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/linearLayout1"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+
+    android:orientation="vertical" >
+
+    <TextView
+        android:layout_height="70dp"
+        android:layout_width="200dp"
+        android:layout_marginTop="120dp"
+        android:id="@+id/title1"
+        android:layout_marginLeft="50dp"
+        android:text="I NEED"
+        android:textSize="60dp"
+        android:textColor="#20B2AA"
+        android:textStyle="bold"
+    />
+
+    <TextView
+        android:layout_height="70dp"
+        android:layout_width="200dp"
+        android:layout_marginTop="5dp"
+        android:id="@+id/title2"
+        android:layout_marginLeft="50dp"
+        android:text="HELP!"
+        android:textSize="60dp"
+        android:textColor="#FFA07A"
+        android:textStyle="bold"
+        />
+
+    <EditText
+        android:id="@+id/phoneNumber"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_alignParentRight="true"
+        android:textSize="18dp"
+        android:ems="12"
+        android:hint="Emergency Contact Number"
+        android:layout_marginLeft="45dp"
+        android:layout_marginRight="45dp"
+        android:layout_marginBottom="20dp"
+        android:layout_marginTop="20dp"
+        android:inputType="phone" />
+
+    <Button
+        android:id="@+id/smsManager"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:textAlignment="center"
+        android:textSize="18dp"
+        android:layout_marginLeft="45dp"
+        android:layout_marginRight="45dp"
+        android:layout_marginBottom="20dp"
+        android:text="Save Emergency Contact"
+        />
+
+
+</LinearLayout>
